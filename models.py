@@ -35,23 +35,22 @@ class FeatureProcessing(Module):
 
 
 class BipartiteGraphConvNet(Module):
-    def __init__(self, n_uni_feat, n_sub_feat):
+    def __init__(self, input_uni_feat, input_sub_feat, output_uni_feat, output_sub_feat):
         super(BipartiteGraphConvNet, self).__init__()
-        self.s1 = GraphConvLayer(n_uni_feat, n_sub_feat)
-        self.s2 = GraphConvLayer(n_uni_feat, n_sub_feat)
-        self.s3 = GraphConvLayer(n_uni_feat, n_sub_feat)
-        self.u1 = GraphConvLayer(n_sub_feat, n_uni_feat)
-        self.u2 = GraphConvLayer(n_sub_feat, n_uni_feat)
-        self.u3 = GraphConvLayer(n_sub_feat, n_uni_feat)
+        self.s1 = GraphConvLayer(input_uni_feat, output_sub_feat)
+        self.s2 = GraphConvLayer(output_uni_feat, output_sub_feat)
+        self.s3 = GraphConvLayer(output_uni_feat, output_sub_feat)
+        self.u1 = GraphConvLayer(input_sub_feat, output_uni_feat)
+        self.u2 = GraphConvLayer(output_sub_feat, output_uni_feat)
+        self.u3 = GraphConvLayer(output_sub_feat, output_uni_feat)
 
     def forward(self, adj, uni_feat, sub_feat):
         time = datetime.now()
         adjT = self.normalize(adj.t())
         adj = self.normalize(adj)
-        print('BGCN: Finished normalizing in: ', datetime.now()-time, ' seconds')
+        #print('BGCN: Finished normalizing in: ', datetime.now()-time, ' seconds')
         time = datetime.now()
         sub_feat_ = self.s1(adjT, uni_feat)
-
         uni_feat_ = self.u1(adj, sub_feat)
 
         sub_feat = self.s1(adjT, uni_feat_)
@@ -59,7 +58,7 @@ class BipartiteGraphConvNet(Module):
 
         sub_feat_ = self.s1(adjT, uni_feat)
         uni_feat_ = self.u1(adj, sub_feat)
-        print('BGCN: Finished running convolutions in: ', datetime.now()-time, ' seconds')
+        #print('BGCN: Finished running convolutions in: ', datetime.now()-time, ' seconds')
         return sub_feat_, uni_feat_
 
     def normalize(self, adj):
@@ -80,27 +79,29 @@ class GraphConvLayer(torch.nn.Module):
 
 
 class SubsetRanking(Module):
-    def __init__(self, n_uni_feat=32, n_sub_feat=32, n_hid=64):
-        self.n_uni_feat = n_uni_feat
-        self.n_sub_feat = n_sub_feat
+    def __init__(self, input_uni_feat, input_sub_feat, output_uni_feat, output_sub_feat, n_hid=64):
         super(SubsetRanking, self).__init__()
-        self.BGCN = BipartiteGraphConvNet(n_uni_feat, n_sub_feat)
+        self.BGCN = BipartiteGraphConvNet(input_uni_feat, input_sub_feat, output_uni_feat, output_sub_feat)
         self.FP = FeatureProcessing()
-        self.Q_func = Q_function(2*n_uni_feat+3*n_sub_feat, n_hid)
+        self.Q_func = Q_function(2*output_sub_feat, n_hid)
 
     def forward(self, state):
         original_uni_feat, original_sub_feat, adj = state
         sub_feat, uni_feat = self.BGCN(adj, original_uni_feat, original_sub_feat)
         n_sub = sub_feat.size()[0]
-        feat_mat = torch.empty(n_sub, 2*self.n_uni_feat+3*self.n_sub_feat)
+        #feat_mat = torch.empty(n_sub, 2*self.n_uni_feat+3*self.n_sub_feat)
         time = datetime.now()
-        for cur_sub in range(n_sub):
-            feat = self.FP(adj, cur_sub, uni_feat, sub_feat, original_sub_feat[cur_sub, :])
-            feat_mat[cur_sub, :] = feat
-        print('Finished feature processing in: ', datetime.now()-time, ' seconds')
+
+        sum_sub_feat = torch.sum(sub_feat, dim=0).repeat(n_sub, 1)
+        feat_mat = torch.cat((sub_feat, sum_sub_feat), dim=1)
+
+        #for cur_sub in range(n_sub):
+        #    feat = self.FP(adj, cur_sub, uni_feat, sub_feat, original_sub_feat[cur_sub, :])
+        #    feat_mat[cur_sub, :] = feat
+        #print('Finished feature processing in: ', datetime.now()-time, ' seconds')
         time = datetime.now()
         q_val = self.Q_func(feat_mat)
-        print('Q-function: Finished evaluting in: ', datetime.now()-time, ' seconds')
+        #print('Q-function: Finished evaluting in: ', datetime.now()-time, ' seconds')
         return q_val
 
     def save_model(self, path):

@@ -32,8 +32,7 @@ def read_as_adj(path):
             # Read amount of cols and rows
             line = file.readline()
             size = line.split()
-            size = [int(size[1]), int(size[0])]
-
+            size = [int(size[0]), int(size[1])]
             # Init adj mat and cost vec
             adj = np.zeros(size)
             cost = np.zeros(size[1])
@@ -48,7 +47,7 @@ def read_as_adj(path):
                 else:
                     cost[i*15:i*15+15] = np.array(list(map(int, line)))
             #Read subset length and subset
-            col = 0
+            row = 0
             while True:
                 line = file.readline()
                 if not line:
@@ -58,9 +57,9 @@ def read_as_adj(path):
                 for i in lines_defining_subset:
                     line = file.readline()
                     line = line.split()
-                    for row in line:
-                        adj[int(row)-1, col] = 1
-                col += 1
+                    for col in line:
+                        adj[row, int(col)-1] = 1
+                row += 1
         else:
             print('Error in format')
         return adj, cost
@@ -69,16 +68,15 @@ def read_as_adj(path):
 s, u, p = 1, 1, 1
 env = SetCoverEnv(s, u, p)
 model = SubsetRanking(n_uni_feat=1, n_sub_feat=3, n_hid=64)
+model_path = os.path.dirname(os.path.realpath(__file__)) + '\model\model1.pt'
+assert os.path.isfile(model_path), 'no model loaded'
+model.load_model(model_path)
 model.eval()
-dir_path = os.path.dirname(os.path.realpath(__file__))
-if os.path.isfile(dir_path):
-    model.load_model(dir_path)
 agent = DDQN_Agent(env, model, 5, 40)
 
-path = 'rail582.txt'
+path = 'scpa1.txt'
 print('Loading data from ', path)
 adj, cost = read_as_adj(path)
-print(adj)
 cost = np.ones_like(cost)
 adj_torch = torch.from_numpy(adj).float()
 print('Finished loading')
@@ -88,10 +86,10 @@ print('evaling model')
 agent.eval()
 
 solution = env.get_solution()
-print(sum(solution))
+print('RL solution: ', sum(solution))
 
 print('computing greedy solution')
 greedy = solver.greedySolver()
 greedy_sol, c = greedy.solve(adj, cost)
 
-print(len(greedy_sol))
+print('Greedy solution: ', len(greedy_sol))

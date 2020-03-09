@@ -45,7 +45,6 @@ class SetCoverEnv(gym.Env):
         sol_action = action + sum(self.solution[0:action])
         while True:
             if self.solution[sol_action] == 0:
-                print('Action found: ', sol_action)
                 self.solution[sol_action] = 1
                 break
             sol_action = sol_action + 1

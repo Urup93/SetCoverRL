@@ -18,19 +18,18 @@ SL, SH = 100, 500
 UL, UH = 100, 500
 s, u, p = draw_params(SL, SH, UL, UH)
 env = SetCoverEnv(s, u, p)
-model = SubsetRanking(n_uni_feat=1, n_sub_feat=3, n_hid=64)
+model = SubsetRanking(input_uni_feat=1, input_sub_feat=3, output_uni_feat=16, output_sub_feat=32, n_hid=64)
 agent = DDQN_Agent(env, model, 5, 40)
 
 
-os.system('wandb login d9cec596df561142f91b26f14ef3c278b84eae99')
-wandb.init(project='speciale')
-wandb.watch(model)
+#os.system('wandb login d9cec596df561142f91b26f14ef3c278b84eae99')
+#wandb.init(project='speciale')
+#wandb.watch(model)
 
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-if os.path.isfile(dir_path):
-    model.load_model(dir_path)
-
+model_path = os.path.dirname(os.path.realpath(__file__))+'\model\model1.pt'
+if os.path.isfile(model_path):
+    model.load_model(model_path)
 
 info = pd.DataFrame(columns=['Subsets', 'Elements', 'Edge prob', 'Seconds used', 'Loss', 'Solution'])
 
@@ -42,7 +41,7 @@ for i in range(iterations):
     test_loss = agent.train()
     time = datetime.now() - time
 
-    wandb.log({'Test loss' : test_loss})
+    #wandb.log({'Test loss' : test_loss})
 
     info.loc[i] = [s, u, round(p, 2), time.seconds, round(test_loss, 2), sum(env.get_solution())]
 
@@ -50,10 +49,10 @@ for i in range(iterations):
     env.reset(s, u, p)
 
     if (i+1)%25 == 0 or i == iterations-1:
-        model.save_model(dir_path+'/model/model1.pt')
+        model.save_model(model_path)
         print('model saved on harddisk')
-        wandb.save(os.path.join(wandb.run.dir, 'checkpoint*'))
+        #wandb.save(os.path.join(wandb.run.dir, 'checkpoint*'))
         print('model saved on cloud')
 
-info.to_csv(dir_path+'/model/training_info.csv', index=False, sep=',', header=True)
+info.to_csv(os.path.dirname(os.path.realpath(__file__)) + '/model/training_info.csv', index=False, sep=',', header=True)
 print('Dataframe saved')
