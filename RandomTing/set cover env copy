@@ -1,0 +1,83 @@
+import gym
+import numpy as np
+import torch
+
+
+def _generate_instance(u, s, p):
+    A = np.random.choice([0, 1], replace=True, size=(u, s), p=[1 - p, p])
+    vertix_nb = np.sum(A, axis=1)
+    for i in range(u):
+        if vertix_nb[i] == 0:
+            A[i, np.random.randint(0, s + 1)] = 1
+    return torch.from_numpy(A)
+
+
+class SetCoverEnv(gym.Env):
+    def __init__(self, s, u, p):
+        self.s = s
+        self.u = u
+        self.p = p
+        self.instance = _generate_instance(u, s, p)
+        self.cost = torch.ones(s)
+        self.action_space = gym.spaces.Discrete(s)
+        self.solution = torch.zeros(s)
+
+    def ava_actions(self):
+        idxs = [i for i in range(self.s) if self.solution[i] == 0]
+        #Skal opdatere action space?
+        return idxs
+
+    def step(self, action):
+        self.solution[action] = 1
+        done = self.is_solution()
+        reward = -1
+        return self.solution, reward, done, {}
+
+    def get_state(self):
+        return self.solution
+
+    def get_instance(self):
+        return self.instance
+
+    def is_solution(self):
+        return all(torch.sum(self.instance[:, self.solution == 1], dim=1) >= 1)
+
+    def reset(self):
+        self.__init__(self.u, self.s, self.p)
+
+    def render(self, mode='human'):
+        ...
+
+    def close(self):
+        ...
+
+
+
+from unittest import TestCase
+import torch
+from set_cover_env import SetCoverEnv
+
+class TestSetCoverEnv(TestCase):
+    def setUp(self):
+        self.env = SetCoverEnv(5, 3, 1)
+        inst = torch.zeros(3, 5)
+        inst[0, :] = torch.Tensor([0, 1, 0, 0, 1])
+        inst[1, :] = torch.Tensor([1, 0, 1, 1, 1])
+        inst[2, :] = torch.Tensor([1, 1, 0, 1, 1])
+        self.env.instance = inst
+
+    def test_ava_actions(self):
+        self.assertEqual([0, 1, 2, 3, 4], self.env.ava_actions())
+        self.env.solution = torch.Tensor([0, 1, 1, 0, 1])
+        self.assertEqual([0, 3], self.env.ava_actions())
+
+    def test_step(self):
+        sol, reward, done, _ = self.env.step(1)
+        self.assertEqual([0, 1, 0, 0, 0], sol.tolist())
+        self.assertEqual(-1, reward)
+        self.assertEqual(False, done)
+        sol, reward, done, _ = self.env.step(2)
+        self.assertEqual([0, 1, 1, 0, 0], sol.tolist())
+        self.assertEqual(-1, reward)
+        self.assertEqual(True, done)
+
