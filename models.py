@@ -45,20 +45,20 @@ class BipartiteGraphConvNet(Module):
         self.u3 = GraphConvLayer(output_sub_feat, output_uni_feat)
 
     def forward(self, adj, uni_feat, sub_feat):
+        #print('BGCN: Normalizing adj')
         time = datetime.now()
         adjT = self.normalize(adj.t())
         adj = self.normalize(adj)
         #print('BGCN: Finished normalizing in: ', datetime.now()-time, ' seconds')
-        time = datetime.now()
-        sub_feat_ = self.s1(adjT, uni_feat)
-        uni_feat_ = self.u1(adj, sub_feat)
-
-        sub_feat = self.s1(adjT, uni_feat_)
-        uni_feat = self.u1(adj, sub_feat_)
 
         sub_feat_ = self.s1(adjT, uni_feat)
         uni_feat_ = self.u1(adj, sub_feat)
-        #print('BGCN: Finished running convolutions in: ', datetime.now()-time, ' seconds')
+
+        sub_feat = self.s2(adjT, uni_feat_)
+        uni_feat = self.u2(adj, sub_feat_)
+
+        sub_feat_ = self.s3(adjT, uni_feat)
+        uni_feat_ = self.u3(adj, sub_feat)
         return sub_feat_, uni_feat_
 
     def normalize(self, adj):
@@ -89,19 +89,9 @@ class SubsetRanking(Module):
         original_uni_feat, original_sub_feat, adj = state
         sub_feat, uni_feat = self.BGCN(adj, original_uni_feat, original_sub_feat)
         n_sub = sub_feat.size()[0]
-        #feat_mat = torch.empty(n_sub, 2*self.n_uni_feat+3*self.n_sub_feat)
-        time = datetime.now()
-
         sum_sub_feat = torch.sum(sub_feat, dim=0).repeat(n_sub, 1)
         feat_mat = torch.cat((sub_feat, sum_sub_feat), dim=1)
-
-        #for cur_sub in range(n_sub):
-        #    feat = self.FP(adj, cur_sub, uni_feat, sub_feat, original_sub_feat[cur_sub, :])
-        #    feat_mat[cur_sub, :] = feat
-        #print('Finished feature processing in: ', datetime.now()-time, ' seconds')
-        time = datetime.now()
         q_val = self.Q_func(feat_mat)
-        #print('Q-function: Finished evaluting in: ', datetime.now()-time, ' seconds')
         return q_val
 
     def save_model(self, path):

@@ -8,14 +8,15 @@ from datetime import datetime
 import pandas as pd
 import wandb
 
+
 def draw_params(SL, SH, UL, UH):
     s = random.randint(SL, SH)
     u = random.randint(UL, UH)
-    p = random.random()
+    p = random.random()*0.2
     return s, u, p
 
-SL, SH = 100, 500
-UL, UH = 100, 500
+SL, SH = 20000, 30000
+UL, UH = 500, 1000
 s, u, p = draw_params(SL, SH, UL, UH)
 env = SetCoverEnv(s, u, p)
 model = SubsetRanking(input_uni_feat=1, input_sub_feat=3, output_uni_feat=16, output_sub_feat=32, n_hid=64)
@@ -34,13 +35,13 @@ if os.path.isfile(model_path):
 info = pd.DataFrame(columns=['Subsets', 'Elements', 'Edge prob', 'Seconds used', 'Loss', 'Solution'])
 
 
-iterations = 1000
+iterations = 10000
 for i in range(iterations):
     print('Training on random graph: ', i+1, ' out of ', iterations)
+    print('Current graph has: ', s, ' subsets and ', u, ' elements')
     time = datetime.now()
     test_loss = agent.train()
     time = datetime.now() - time
-
     #wandb.log({'Test loss' : test_loss})
 
     info.loc[i] = [s, u, round(p, 2), time.seconds, round(test_loss, 2), sum(env.get_solution())]

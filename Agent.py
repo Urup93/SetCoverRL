@@ -107,7 +107,6 @@ class DDQN_Agent:
         while not is_solution:
             print('Computing Q-values and deciding on an action')
             q_values = self.model(state)
-            print(q_values[1:10])
             action = torch.argmax(q_values).item()
             state, reward, is_solution, _ = self.env.step(action)
             print('Uncovered elements remaining: ', self.env.instance.size()[0])

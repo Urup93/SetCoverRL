@@ -67,14 +67,14 @@ def read_as_adj(path):
 
 s, u, p = 1, 1, 1
 env = SetCoverEnv(s, u, p)
-model = SubsetRanking(n_uni_feat=1, n_sub_feat=3, n_hid=64)
+model = SubsetRanking(input_uni_feat=1, input_sub_feat=3, output_uni_feat=16, output_sub_feat=32, n_hid=64)
 model_path = os.path.dirname(os.path.realpath(__file__)) + '\model\model1.pt'
 assert os.path.isfile(model_path), 'no model loaded'
 model.load_model(model_path)
 model.eval()
 agent = DDQN_Agent(env, model, 5, 40)
 
-path = 'scpa1.txt'
+path = 'rail582.txt'
 print('Loading data from ', path)
 adj, cost = read_as_adj(path)
 cost = np.ones_like(cost)
