@@ -43,6 +43,17 @@ class Q_Agent:
             state = next_state
         return sum(err)/len(err)
 
+    def eval(self):
+        state = self.env.get_state()
+        is_solution = False
+        while not is_solution:
+            q_values = self.model(state)
+            action = torch.argmax(q_values).item()
+            state, reward, is_solution, _ = self.env.step(action)
+            print('Uncovered elements remaining: ', self.env.instance.size()[0])
+        return self.env.get_solution
+
+
 
 class DDQN_Agent:
     def __init__(self, env, model, n_step, memory_capacity):
@@ -105,10 +116,10 @@ class DDQN_Agent:
         state = self.env.get_state()
         is_solution = False
         while not is_solution:
-            print('Computing Q-values and deciding on an action')
             q_values = self.model(state)
+            #print(q_values[1:5])
             action = torch.argmax(q_values).item()
             state, reward, is_solution, _ = self.env.step(action)
-            print('Uncovered elements remaining: ', self.env.instance.size()[0])
+            #print('Uncovered elements remaining: ', self.env.instance.size()[0])
         return self.env.get_solution
 

@@ -39,27 +39,24 @@ class BipartiteGraphConvNet(Module):
         super(BipartiteGraphConvNet, self).__init__()
         self.s1 = GraphConvLayer(input_uni_feat, output_sub_feat)
         self.s2 = GraphConvLayer(output_uni_feat, output_sub_feat)
-        self.s3 = GraphConvLayer(output_uni_feat, output_sub_feat)
         self.u1 = GraphConvLayer(input_sub_feat, output_uni_feat)
         self.u2 = GraphConvLayer(output_sub_feat, output_uni_feat)
-        self.u3 = GraphConvLayer(output_sub_feat, output_uni_feat)
 
     def forward(self, adj, uni_feat, sub_feat):
-        #print('BGCN: Normalizing adj')
-        time = datetime.now()
-        adjT = self.normalize(adj.t())
-        adj = self.normalize(adj)
-        #print('BGCN: Finished normalizing in: ', datetime.now()-time, ' seconds')
 
-        sub_feat_ = self.s1(adjT, uni_feat)
+        sub_feat_ = self.s1(adj.t(), uni_feat)
         uni_feat_ = self.u1(adj, sub_feat)
 
-        sub_feat = self.s2(adjT, uni_feat_)
+        sub_feat_ = torch.tanh(sub_feat_ - torch.mean(sub_feat_, dim=0))
+        uni_feat_ = torch.tanh(uni_feat_ - torch.mean(uni_feat_, dim=0))
+
+        sub_feat = self.s2(adj.t(), uni_feat_)
         uni_feat = self.u2(adj, sub_feat_)
 
-        sub_feat_ = self.s3(adjT, uni_feat)
-        uni_feat_ = self.u3(adj, sub_feat)
-        return sub_feat_, uni_feat_
+        sub_feat = torch.tanh(sub_feat - torch.mean(sub_feat, dim=0))
+        uni_feat = torch.tanh(uni_feat - torch.mean(uni_feat, dim=0))
+
+        return sub_feat, uni_feat
 
     def normalize(self, adj):
         d_mat = torch.diag(1/torch.sum(adj, dim=1))
@@ -88,9 +85,11 @@ class SubsetRanking(Module):
     def forward(self, state):
         original_uni_feat, original_sub_feat, adj = state
         sub_feat, uni_feat = self.BGCN(adj, original_uni_feat, original_sub_feat)
+        #print('sub feat: ', sub_feat[1:5, :])
         n_sub = sub_feat.size()[0]
         sum_sub_feat = torch.sum(sub_feat, dim=0).repeat(n_sub, 1)
         feat_mat = torch.cat((sub_feat, sum_sub_feat), dim=1)
+        #print('feat mat: ', feat_mat[1:5, 1:5])
         q_val = self.Q_func(feat_mat)
         return q_val
 

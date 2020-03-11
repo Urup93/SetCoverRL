@@ -5,6 +5,7 @@ import pandas as pd
 import math
 from datetime import datetime
 from scipy import sparse
+import torch
 
 
 def generate_adj_mat(u, s, p):
@@ -21,6 +22,7 @@ def generate_adj_mat(u, s, p):
 
 class greedySolver:
     def solve(self, adj, cost, grasp = False):
+        adj = adj.numpy()
         u, s = np.shape(adj)
         solution = []
         c = 0

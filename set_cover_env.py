@@ -17,19 +17,9 @@ def _generate_instance(u, s, p):
     return A
 
 def generate_features(adj):
-    print('Generating features')
-    time = datetime.now()
     n_uni, n_sub = adj.size()
-    feature_subset_degree = (torch.sum(adj, dim=0)/n_uni).reshape(n_sub, 1)
-    feature_mean_covered_degree = torch.empty(n_sub, 1)
-    feature_min_covered_degree = torch.empty(n_sub, 1)
-    for i in range(n_sub):
-        covered_degrees = torch.sum(adj[adj[:, i] > 0, :], dim=1)/n_sub
-        feature_mean_covered_degree[i] = torch.mean(covered_degrees)
-        feature_min_covered_degree[i] = torch.min(covered_degrees)
-    uni_feats = (torch.sum(adj, dim=1)/n_sub).reshape(n_uni, 1)
-    sub_feats = torch.cat((feature_subset_degree, feature_mean_covered_degree, feature_min_covered_degree), dim=1)
-    print('Finished generating features in', datetime.now()-time)
+    sub_feats = torch.ones(n_sub, 32)
+    uni_feats = torch.ones(n_uni, 16)
     return sub_feats, uni_feats
 
 class SetCoverEnv(gym.Env):
@@ -61,6 +51,7 @@ class SetCoverEnv(gym.Env):
         self.instance = torch.cat((self.instance[:, 0:action], self.instance[:, action + 1:]), dim=1)
         self.sub_feat = self.sub_feat[torch.sum(self.instance, dim=0) > 0, :]
         self.instance = self.instance[:, torch.sum(self.instance, dim=0) > 0]
+        self.sub_feat, self.uni_feat = generate_features(self.instance)
 
     def get_solution(self):
         return self.solution
